@@ -1,0 +1,57 @@
+== Rackspace Cloud Files / Carrierwave Example Application
+
+This is a basic application to show the integration of {Rackspace Cloud Files}[http://www.rackspacecloud.com/cloud_hosting_products/files] and the Rails file attachment utility {Carrierwave}[http://github.com/jnicklas/carrierwave/].  It implements a simple interface to a User with an attached file avatar.
+
+This application has the {carrierwave gem}[http://rubygems.org/gems/carrierwave], the {cloudfiles gem}[http://rubygems.org/gems/cloudfiles], and Rails 2.3.5 frozen.
+
+The Carrierwave Cloud Files option depends on the cloudfiles gem.  This gem can be installed from the standard gem server. 
+
+  gem install cloudfiles
+  
+For more information, see the {Ruby Cloud Files API repository on github}[http://github.com/rackspace/ruby-cloudfiles/]
+
+It also relies on RMagick, MiniMagick, or ImageScience being installed.
+
+To use this demo application, you must first sign up for a Cloud Files account at http://rackspacecloud.com/
+
+Once you have your account, log into http://manage.rackspacecloud.com/ - choose "Your Account" on the left, then the "API Access" submenu.  Take note of your Username and API Key (generate a new one of one does not exist).
+
+Edit the config/initializers/carrierwave.rb (using config/initializers/carrierwave.rb.example as a base) file and put your username and API key in the proper environment (likely development), along with the name of an existing container that you would like to use.  Be sure the container is marked as public.
+
+Finally, you can start the app with script/server, and view the application on http://localhost:3000/ (by default).  Upload pictures and you should see them appear both in the application, and in the file manager in the Rackspace Cloud Control Panel!
+
+== Things To Look For
+
+In app/models/user.rb, there is this section:
+
+  class User < ActiveRecord::Base
+    mount_uploader :avatar, AvatarUploader
+  end
+
+This indicates that the User model has a file attached to it called avatar, and it uses the AvatarUploader class to handle it.  That class can be found in app/uploaders/avatar_uploader.rb.  Relevant sections from that file are below:
+
+  class AvatarUploader < CarrierWave::Uploader::Base
+  
+    # Use the RMagick image processor.
+    include CarrierWave::RMagick
+
+    # Store the files in Rackspace Cloud Files.
+    storage :cloud_files
+
+    # Override the directory where uploaded files will be stored
+    # This will place the files on Cloud Files in a path like "uploads/user/avatar/1/myfile.jpg":
+    def store_dir
+      "uploads/#{model.class.to_s.underscore}/#{mounted_as}/#{model.id}"
+    end
+
+    # Create different versions of your uploaded files, in this case a 50x50 thumbnail.
+    version :thumb do
+      process :resize_to_fill => [50, 50]
+    end
+
+  end
+
+
+== Gotchas
+
+If you don't set your form up to be a multipart form, the file data will not be sent, leading to errors (or at least nothing being uploaded to Cloud Files).
